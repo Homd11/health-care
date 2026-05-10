@@ -87,3 +87,37 @@ def interaction_features(df: pd.DataFrame) -> pd.DataFrame:
     if "hemo" in out.columns:
         out["age_x_hemo"] = out["age"] * out["hemo"]
     return out
+
+
+def compute_anemia_severity(df: pd.DataFrame) -> pd.DataFrame:
+    """WHO anemia severity bins (0=normal, 1=mild, 2=moderate, 3=severe)."""
+    out = df.copy()
+    h = out["hemo"]
+    sev = pd.Series(0, index=out.index, dtype=int)
+    sev[(h >= 10) & (h < 12)] = 1
+    sev[(h > 7)   & (h < 10)] = 2
+    sev[h <= 7] = 3
+    out["anemia_severity"] = sev
+    return out
+
+
+def compute_cv_risk(df: pd.DataFrame) -> pd.DataFrame:
+    """Additive cardiovascular risk index (0-5)."""
+    out = df.copy()
+    out["cv_risk"] = (
+        out["htn"].astype(int)
+        + out["dm"].astype(int)
+        + out["cad"].astype(int)
+        + (out["age"] >= 65).astype(int)
+        + (out["bp"] >= 140).astype(int)
+    )
+    return out
+
+
+def compute_electrolyte_imbalance(df: pd.DataFrame) -> pd.DataFrame:
+    """Count of {sod, pot} outside reference range."""
+    out = df.copy()
+    sod_oor = (out["sod"] < 135) | (out["sod"] > 145)
+    pot_oor = (out["pot"] < 3.5) | (out["pot"] > 5.0)
+    out["electrolyte_imbalance"] = sod_oor.astype(int) + pot_oor.astype(int)
+    return out

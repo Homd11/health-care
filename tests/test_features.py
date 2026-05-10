@@ -111,3 +111,35 @@ def test_interaction_features_multiplies_correctly():
     assert out["age_x_bp"].tolist() == [4800, 8400]
     assert out["age_x_egfr"].tolist() == [3600, 3000]
     assert out["age_x_hemo"].tolist() == [560, 600]
+
+
+from src.features import (
+    compute_anemia_severity, compute_cv_risk, compute_electrolyte_imbalance,
+)
+
+
+def test_anemia_severity_levels():
+    df = pd.DataFrame({"hemo": [13.0, 11.0, 9.0, 7.0]})
+    out = compute_anemia_severity(df)
+    assert out["anemia_severity"].tolist() == [0, 1, 2, 3]
+
+
+def test_cv_risk_additive():
+    df = pd.DataFrame({
+        "htn": [1, 1, 0],
+        "dm":  [1, 0, 0],
+        "cad": [0, 1, 0],
+        "age": [70.0, 50.0, 30.0],
+        "bp":  [150, 130, 110],
+    })
+    out = compute_cv_risk(df)
+    assert out["cv_risk"].tolist() == [4, 2, 0]
+
+
+def test_electrolyte_imbalance_count_outside_ref():
+    df = pd.DataFrame({
+        "sod": [140, 130, 150, 138],
+        "pot": [4.0, 5.5, 3.0, 4.5],
+    })
+    out = compute_electrolyte_imbalance(df)
+    assert out["electrolyte_imbalance"].tolist() == [0, 2, 2, 0]
