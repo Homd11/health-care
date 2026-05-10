@@ -1,0 +1,14 @@
+{
+  "core_features": [
+    "egfr",
+    "sc",
+    "hemo",
+    "bgr",
+    "multimorbidity",
+    "anemia_severity",
+    "cv_risk",
+    "age",
+    "bp"
+  ],
+  "n_clusters": 3
+}
