@@ -7,8 +7,9 @@ AIE323 — Data Mining, Alamein University.
 
 ```powershell
 cd D:\healthcare
-python -m venv .venv
+py -3.11 -m venv .venv     # or `python -m venv .venv` if `python` is on PATH
 .\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
