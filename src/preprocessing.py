@@ -111,3 +111,13 @@ def flag_outliers_iqr(df: pd.DataFrame, cols: list[str], k: float = 1.5) -> pd.D
         lo, hi = q1 - k * iqr, q3 + k * iqr
         out[f"{col}_outlier_flag"] = ((out[col] < lo) | (out[col] > hi)).astype(int)
     return out
+
+
+from sklearn.preprocessing import StandardScaler
+
+
+def fit_scale_numeric(df: pd.DataFrame, cols: list[str]) -> tuple[pd.DataFrame, StandardScaler]:
+    out = df.copy()
+    scaler = StandardScaler()
+    out[cols] = scaler.fit_transform(out[cols])
+    return out, scaler

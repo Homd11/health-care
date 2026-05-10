@@ -113,3 +113,26 @@ def test_encode_binary_appetite_and_classification():
     out = encode_binary(df)
     assert out["appet"].tolist() == [0, 1]
     assert out["classification"].tolist() == [1, 0]
+
+
+import joblib
+from src.preprocessing import fit_scale_numeric
+
+
+def test_fit_scale_numeric_returns_scaled_df_and_scaler(tmp_path):
+    df = pd.DataFrame({
+        "age": [10.0, 20.0, 30.0, 40.0],
+        "bgr": [100.0, 110.0, 120.0, 130.0],
+        "htn": [1, 0, 1, 0],  # binary, should NOT be scaled
+    })
+    out, scaler = fit_scale_numeric(df, cols=["age", "bgr"])
+    # scaled columns have ~zero mean, ~unit std
+    assert abs(out["age"].mean()) < 1e-9
+    assert abs(out["age"].std(ddof=0) - 1.0) < 1e-9
+    # binary col untouched
+    assert out["htn"].tolist() == [1, 0, 1, 0]
+    # scaler can be persisted + reloaded
+    p = tmp_path / "scaler.pkl"
+    joblib.dump(scaler, p)
+    reloaded = joblib.load(p)
+    assert reloaded.mean_.shape == (2,)
