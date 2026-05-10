@@ -121,3 +121,27 @@ def compute_electrolyte_imbalance(df: pd.DataFrame) -> pd.DataFrame:
     pot_oor = (out["pot"] < 3.5) | (out["pot"] > 5.0)
     out["electrolyte_imbalance"] = sod_oor.astype(int) + pot_oor.astype(int)
     return out
+
+
+def drop_low_variance(df: pd.DataFrame, threshold: float = 0.01) -> tuple[pd.DataFrame, list[str]]:
+    """Drop numeric columns with variance below threshold."""
+    numeric = df.select_dtypes(include=[np.number])
+    variances = numeric.var()
+    drop = variances[variances < threshold].index.tolist()
+    return df.drop(columns=drop), drop
+
+
+def drop_high_correlation(df: pd.DataFrame, threshold: float = 0.9) -> tuple[pd.DataFrame, list[str]]:
+    """For each pair |corr| > threshold, drop the second column (column-order tiebreak)."""
+    numeric = df.select_dtypes(include=[np.number])
+    corr = numeric.corr().abs()
+    upper = corr.where(np.triu(np.ones(corr.shape, dtype=bool), k=1))
+    to_drop: list[str] = []
+    for col in upper.columns:
+        if col in to_drop:
+            continue
+        candidates = upper.index[upper[col] > threshold].tolist()
+        for cand in candidates:
+            if cand not in to_drop and cand != col:
+                to_drop.append(cand)
+    return df.drop(columns=to_drop), to_drop

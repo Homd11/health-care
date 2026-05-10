@@ -143,3 +143,40 @@ def test_electrolyte_imbalance_count_outside_ref():
     })
     out = compute_electrolyte_imbalance(df)
     assert out["electrolyte_imbalance"].tolist() == [0, 2, 2, 0]
+
+
+from src.features import drop_low_variance, drop_high_correlation
+
+
+def test_drop_low_variance_removes_constant_cols():
+    df = pd.DataFrame({
+        "a": [1.0, 2.0, 3.0, 4.0],
+        "b": [1.0, 1.0, 1.0, 1.0],
+        "c": [0.001, 0.001, 0.002, 0.001],
+    })
+    out, dropped = drop_low_variance(df, threshold=0.01)
+    assert "b" in dropped
+    assert "a" in out.columns
+    assert "c" in dropped
+
+
+def test_drop_high_correlation_removes_one_of_pair():
+    np.random.seed(42)
+    a = np.random.randn(100)
+    df = pd.DataFrame({
+        "a": a,
+        "a_dup": a + np.random.randn(100) * 1e-9,
+        "b": np.random.randn(100),
+    })
+    out, dropped = drop_high_correlation(df, threshold=0.9)
+    assert len(dropped) == 1
+    assert dropped[0] in ("a", "a_dup")
+    assert "b" in out.columns
+
+
+def test_drop_high_correlation_keeps_uncorrelated():
+    np.random.seed(0)
+    df = pd.DataFrame({c: np.random.randn(50) for c in ["x", "y", "z"]})
+    out, dropped = drop_high_correlation(df, threshold=0.9)
+    assert dropped == []
+    assert set(out.columns) == {"x", "y", "z"}
