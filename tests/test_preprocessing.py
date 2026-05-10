@@ -172,3 +172,9 @@ def test_clinical_imputer_handles_unseen_htn_value():
     # falls back to global median 1.5 / global mode (any of the two)
     assert out["sc"].iloc[0] == 1.5
     assert out["rbc"].iloc[0] in ("abnormal", "normal")
+
+
+def test_flag_outliers_iqr_constant_column_flags_zero():
+    df = pd.DataFrame({"al": [0.0, 0.0, 0.0, 0.0]})
+    out = flag_outliers_iqr(df, cols=["al"])
+    assert out["al_outlier_flag"].sum() == 0

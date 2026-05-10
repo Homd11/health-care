@@ -101,6 +101,7 @@ def flag_outliers_iqr(df: pd.DataFrame, cols: list[str], k: float = 1.5) -> pd.D
     """Add `<col>_outlier_flag` columns. Does NOT remove rows.
 
     Extreme clinical values are typically real critical findings, not noise.
+    Constant columns (IQR == 0) are short-circuited to zero flags.
     """
     out = df.copy()
     for col in cols:
@@ -108,6 +109,9 @@ def flag_outliers_iqr(df: pd.DataFrame, cols: list[str], k: float = 1.5) -> pd.D
             continue
         q1, q3 = out[col].quantile([0.25, 0.75])
         iqr = q3 - q1
+        if iqr == 0:
+            out[f"{col}_outlier_flag"] = 0
+            continue
         lo, hi = q1 - k * iqr, q3 + k * iqr
         out[f"{col}_outlier_flag"] = ((out[col] < lo) | (out[col] > hi)).astype(int)
     return out
