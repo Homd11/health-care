@@ -28,7 +28,7 @@ def violin_by_group(df: pd.DataFrame, value_col: str, group_col: str, title: str
 
 
 def comorbidity_network(df: pd.DataFrame, conditions: list[str], save_path: Path | None = None):
-    """Co-occurrence graph of binary condition columns."""
+    """Co-occurrence graph of binary condition columns. Static PNG + interactive HTML."""
     G = nx.Graph()
     for c in conditions:
         G.add_node(c, prevalence=int(df[c].sum()))
@@ -51,6 +51,19 @@ def comorbidity_network(df: pd.DataFrame, conditions: list[str], save_path: Path
     ax.axis("off")
     fig.tight_layout()
     if save_path:
+        save_path = Path(save_path)
         save_path.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(save_path, dpi=150, bbox_inches="tight")
+        try:
+            from pyvis.network import Network
+            net = Network(height="500px", width="100%", notebook=False, directed=False)
+            for n, data in G.nodes(data=True):
+                net.add_node(n, label=n, value=data.get("prevalence", 1),
+                             title=f"{n}: prevalence {data.get('prevalence', 0)}")
+            for u, v, data in G.edges(data=True):
+                net.add_edge(u, v, value=data["weight"], title=f"co-occurrence: {data['weight']}")
+            html_path = save_path.with_suffix(".html")
+            net.write_html(str(html_path), open_browser=False, notebook=False)
+        except Exception as e:
+            print(f"[warn] pyvis HTML export failed: {e}")
     return fig, G
