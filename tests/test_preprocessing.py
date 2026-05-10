@@ -61,3 +61,23 @@ def test_impute_handles_missing_htn_value():
     out, _ = impute_clinical(df)
     # htn itself imputed via mode
     assert out["htn"].notna().all()
+
+
+from src.preprocessing import flag_outliers_iqr
+
+
+def test_flag_outliers_iqr_creates_flag_columns():
+    df = pd.DataFrame({"sc": [1.0, 1.1, 0.9, 1.2, 1.0, 76.0],
+                       "bgr": [100, 110, 105, 115, 108, 112]})
+    out = flag_outliers_iqr(df, cols=["sc", "bgr"])
+    assert "sc_outlier_flag" in out.columns
+    assert "bgr_outlier_flag" in out.columns
+    assert out["sc_outlier_flag"].iloc[5] == 1     # 76.0 is an outlier
+    assert out["sc_outlier_flag"].iloc[:5].sum() == 0
+    assert out["bgr_outlier_flag"].sum() == 0      # all normal
+
+
+def test_flag_outliers_does_not_remove_rows():
+    df = pd.DataFrame({"sc": [1.0, 76.0]})
+    out = flag_outliers_iqr(df, cols=["sc"])
+    assert len(out) == 2  # row preserved

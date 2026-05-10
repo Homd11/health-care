@@ -72,3 +72,19 @@ def impute_clinical(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
         "categorical_modes": categorical_modes,
     }
     return out, fitted
+
+
+def flag_outliers_iqr(df: pd.DataFrame, cols: list[str], k: float = 1.5) -> pd.DataFrame:
+    """Add `<col>_outlier_flag` columns. Does NOT remove rows.
+
+    Extreme clinical values are typically real critical findings, not noise.
+    """
+    out = df.copy()
+    for col in cols:
+        if col not in out.columns:
+            continue
+        q1, q3 = out[col].quantile([0.25, 0.75])
+        iqr = q3 - q1
+        lo, hi = q1 - k * iqr, q3 + k * iqr
+        out[f"{col}_outlier_flag"] = ((out[col] < lo) | (out[col] > hi)).astype(int)
+    return out
