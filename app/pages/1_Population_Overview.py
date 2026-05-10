@@ -1,3 +1,7 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 """Page 1 — Population Overview."""
 import json
 from pathlib import Path

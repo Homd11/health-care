@@ -1,3 +1,7 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 """Page 5 — Upload CSV of patients, get cluster + risk + confidence."""
 import io
 from pathlib import Path

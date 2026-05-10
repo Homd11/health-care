@@ -1,5 +1,10 @@
 """Streamlit app entry point. Pages auto-discovered from app/pages/."""
+import sys
 from pathlib import Path
+# Streamlit Cloud runs the entry script with its own dir on sys.path, not the project root.
+# Insert project root so `from app.X` and `from src.X` imports resolve.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 import streamlit as st
 from app.components import inject_styles, render_disclaimer
 

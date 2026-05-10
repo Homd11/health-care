@@ -1,3 +1,7 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 """Page 2 — Cluster Explorer: interactive 2D scatter + side panel + radar."""
 import json
 from pathlib import Path
