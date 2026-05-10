@@ -113,6 +113,72 @@ def flag_outliers_iqr(df: pd.DataFrame, cols: list[str], k: float = 1.5) -> pd.D
     return out
 
 
+class ClinicalImputer:
+    """Stateful imputer: htn-stratified median for numerics, mode for binaries.
+
+    Fit on training data; transform new patient rows in inference (dashboard).
+    Persisted via joblib.
+    """
+
+    def __init__(self) -> None:
+        self.numeric_medians: dict[str, dict[Any, float]] = {}
+        self.categorical_modes: dict[str, dict[Any, str]] = {}
+        self.htn_global_mode: str | None = None
+
+    def fit(self, df: pd.DataFrame) -> "ClinicalImputer":
+        out = df.copy()
+        if "htn" in out.columns:
+            self.htn_global_mode = out["htn"].mode(dropna=True).iloc[0]
+            out["htn"] = out["htn"].fillna(self.htn_global_mode)
+
+        for col in NUMERIC_COLS:
+            if col not in out.columns:
+                continue
+            medians = out.groupby("htn")[col].median().to_dict()
+            global_median = float(out[col].median())
+            # Replace any NaN group medians with global
+            medians = {k: (global_median if pd.isna(v) else float(v)) for k, v in medians.items()}
+            medians["_global"] = global_median
+            self.numeric_medians[col] = medians
+
+        for col in BINARY_COLS:
+            if col not in out.columns or col == "htn":
+                continue
+            modes = out.groupby("htn")[col].agg(
+                lambda s: s.mode().iloc[0] if not s.mode().empty else np.nan
+            ).to_dict()
+            global_mode = out[col].mode(dropna=True).iloc[0]
+            modes = {k: (global_mode if pd.isna(v) else v) for k, v in modes.items()}
+            modes["_global"] = global_mode
+            self.categorical_modes[col] = modes
+
+        return self
+
+    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        out = df.copy()
+        if "htn" in out.columns and self.htn_global_mode is not None:
+            out["htn"] = out["htn"].fillna(self.htn_global_mode)
+
+        for col, medians in self.numeric_medians.items():
+            if col not in out.columns:
+                continue
+            global_median = medians["_global"]
+            fill = out["htn"].map(medians).fillna(global_median) if "htn" in out.columns else global_median
+            out[col] = out[col].fillna(fill)
+
+        for col, modes in self.categorical_modes.items():
+            if col not in out.columns:
+                continue
+            global_mode = modes["_global"]
+            fill = out["htn"].map(modes).fillna(global_mode) if "htn" in out.columns else global_mode
+            out[col] = out[col].fillna(fill)
+
+        return out
+
+    def fit_transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        return self.fit(df).transform(df)
+
+
 from sklearn.preprocessing import StandardScaler
 
 

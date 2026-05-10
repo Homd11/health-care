@@ -136,3 +136,39 @@ def test_fit_scale_numeric_returns_scaled_df_and_scaler(tmp_path):
     joblib.dump(scaler, p)
     reloaded = joblib.load(p)
     assert reloaded.mean_.shape == (2,)
+
+
+from src.preprocessing import ClinicalImputer
+
+
+def test_clinical_imputer_fit_transform_roundtrip(tmp_path):
+    df = pd.DataFrame({
+        "htn": ["yes", "yes", "no", "no"],
+        "sc":  [2.0, 4.0, 0.8, 1.0],
+        "bgr": [200.0, 220.0, 100.0, 110.0],
+        "rbc": ["abnormal", "abnormal", "normal", "normal"],
+    })
+    imputer = ClinicalImputer().fit(df)
+
+    new_row = pd.DataFrame({"htn": ["yes"], "sc": [np.nan], "bgr": [np.nan], "rbc": [np.nan]})
+    out = imputer.transform(new_row)
+    assert out["sc"].iloc[0] == 3.0      # yes-group median {2,4}
+    assert out["bgr"].iloc[0] == 210.0   # yes-group median {200,220}
+    assert out["rbc"].iloc[0] == "abnormal"
+
+    # round-trip via joblib
+    p = tmp_path / "imputer.pkl"
+    joblib.dump(imputer, p)
+    reloaded = joblib.load(p)
+    out2 = reloaded.transform(new_row)
+    assert out2["sc"].iloc[0] == 3.0
+
+
+def test_clinical_imputer_handles_unseen_htn_value():
+    df = pd.DataFrame({"htn": ["yes", "no"], "sc": [2.0, 1.0], "rbc": ["abnormal", "normal"]})
+    imputer = ClinicalImputer().fit(df)
+    new = pd.DataFrame({"htn": ["maybe"], "sc": [np.nan], "rbc": [np.nan]})
+    out = imputer.transform(new)
+    # falls back to global median 1.5 / global mode (any of the two)
+    assert out["sc"].iloc[0] == 1.5
+    assert out["rbc"].iloc[0] in ("abnormal", "normal")

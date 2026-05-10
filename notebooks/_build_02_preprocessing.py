@@ -62,14 +62,22 @@ cells.append(nbf.v4.new_markdown_cell("## 6. Persist artifacts"))
 cells.append(nbf.v4.new_code_cell("""# Save cleaned dataset
 df_scaled.to_csv('../data/processed/patients_clean.csv', index=False)
 
-# Persist scaler + imputer state
+# Persist scaler
 joblib.dump(scaler, '../models/scaler.pkl')
+
+# Persist imputer (callable; used by dashboard for new-patient prediction)
+from src.preprocessing import ClinicalImputer
+imputer = ClinicalImputer().fit(df)  # fit on the post-clean_types frame
+joblib.dump(imputer, '../models/imputer.pkl')
+
+# Also persist raw fitted state for inspectability
 with open('../models/imputer_state.json', 'w') as f:
     json.dump(fitted_imputer, f, indent=2, default=str)
 
 print('Saved:')
 print('  data/processed/patients_clean.csv:', df_scaled.shape)
 print('  models/scaler.pkl')
+print('  models/imputer.pkl')
 print('  models/imputer_state.json')
 """))
 
