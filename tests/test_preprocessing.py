@@ -81,3 +81,35 @@ def test_flag_outliers_does_not_remove_rows():
     df = pd.DataFrame({"sc": [1.0, 76.0]})
     out = flag_outliers_iqr(df, cols=["sc"])
     assert len(out) == 2  # row preserved
+
+
+from src.preprocessing import encode_binary
+
+
+def test_encode_binary_yes_no():
+    df = pd.DataFrame({"htn": ["yes", "no", "yes"], "dm": ["no", "yes", "no"]})
+    out = encode_binary(df)
+    assert out["htn"].tolist() == [1, 0, 1]
+    assert out["dm"].tolist() == [0, 1, 0]
+
+
+def test_encode_binary_present_notpresent():
+    df = pd.DataFrame({"pcc": ["present", "notpresent"], "ba": ["notpresent", "present"]})
+    out = encode_binary(df)
+    assert out["pcc"].tolist() == [1, 0]
+    assert out["ba"].tolist() == [0, 1]
+
+
+def test_encode_binary_normal_abnormal():
+    df = pd.DataFrame({"rbc": ["normal", "abnormal"], "pc": ["abnormal", "normal"]})
+    out = encode_binary(df)
+    assert out["rbc"].tolist() == [0, 1]
+    assert out["pc"].tolist() == [1, 0]
+
+
+def test_encode_binary_appetite_and_classification():
+    df = pd.DataFrame({"appet": ["good", "poor"],
+                       "classification": ["ckd", "notckd"]})
+    out = encode_binary(df)
+    assert out["appet"].tolist() == [0, 1]
+    assert out["classification"].tolist() == [1, 0]

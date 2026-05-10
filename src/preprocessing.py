@@ -74,6 +74,29 @@ def impute_clinical(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
     return out, fitted
 
 
+BINARY_ENCODING = {
+    "htn":  {"yes": 1, "no": 0},
+    "dm":   {"yes": 1, "no": 0},
+    "cad":  {"yes": 1, "no": 0},
+    "pe":   {"yes": 1, "no": 0},
+    "ane":  {"yes": 1, "no": 0},
+    "pcc":  {"present": 1, "notpresent": 0},
+    "ba":   {"present": 1, "notpresent": 0},
+    "rbc":  {"normal": 0, "abnormal": 1},
+    "pc":   {"normal": 0, "abnormal": 1},
+    "appet":{"good": 0, "poor": 1},
+    "classification": {"ckd": 1, "notckd": 0},
+}
+
+
+def encode_binary(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    for col, mapping in BINARY_ENCODING.items():
+        if col in out.columns:
+            out[col] = out[col].map(mapping).astype("Int64")
+    return out
+
+
 def flag_outliers_iqr(df: pd.DataFrame, cols: list[str], k: float = 1.5) -> pd.DataFrame:
     """Add `<col>_outlier_flag` columns. Does NOT remove rows.
 
