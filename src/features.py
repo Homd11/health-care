@@ -20,3 +20,31 @@ def compute_egfr(df: pd.DataFrame) -> pd.DataFrame:
     out["egfr"] = 142.0 * (low ** -0.241) * (high ** -1.200) * (0.9938 ** age)
     out.loc[sc.isna() | age.isna(), "egfr"] = np.nan
     return out
+
+
+THRESHOLD_FLAG_DEFINITIONS: dict[str, tuple[str, str, float]] = {
+    "flag_hyperglycemia":     ("bgr",  ">=", 200),
+    "flag_hypertensive":      ("bp",   ">=", 140),
+    "flag_anemia":            ("hemo", "<",  12),
+    "flag_hyperkalemia":      ("pot",  ">",  5.0),
+    "flag_hyponatremia":      ("sod",  "<",  135),
+    "flag_renal_impairment":  ("sc",   ">",  1.3),
+    "flag_proteinuria":       ("al",   ">=", 2),
+    "flag_low_egfr":          ("egfr", "<",  60),
+}
+
+
+def threshold_flags(df: pd.DataFrame) -> pd.DataFrame:
+    """Add binary clinical threshold flags. Skips flags whose source column is absent."""
+    out = df.copy()
+    ops = {
+        ">":  lambda s, t: s > t,
+        ">=": lambda s, t: s >= t,
+        "<":  lambda s, t: s < t,
+        "<=": lambda s, t: s <= t,
+    }
+    for flag, (col, op, thr) in THRESHOLD_FLAG_DEFINITIONS.items():
+        if col not in out.columns:
+            continue
+        out[flag] = ops[op](out[col], thr).astype(int)
+    return out
