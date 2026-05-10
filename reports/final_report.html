@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="AIE323 — Data Mining, Alamein University" />
+  <title>Healthcare Patient Clustering — Final Report</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Healthcare Patient Clustering — Final Report</h1>
+<p class="subtitle">Unsupervised Discovery of Clinical Risk Profiles in
+Chronic Kidney Disease</p>
+<p class="author">AIE323 — Data Mining, Alamein University</p>
+<p class="date">May 2026</p>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#executive-summary" id="toc-executive-summary">Executive
+Summary</a></li>
+<li><a href="#dataset-domain-background"
+id="toc-dataset-domain-background">1. Dataset &amp; Domain
+Background</a>
+<ul>
+<li><a href="#source" id="toc-source">1.1 Source</a></li>
+<li><a href="#feature-inventory" id="toc-feature-inventory">1.2 Feature
+inventory</a></li>
+<li><a href="#known-limitations" id="toc-known-limitations">1.3 Known
+limitations</a></li>
+</ul></li>
+<li><a href="#methodology" id="toc-methodology">2. Methodology</a>
+<ul>
+<li><a href="#milestone-1-medical-eda-preprocessing"
+id="toc-milestone-1-medical-eda-preprocessing">2.1 Milestone 1 — Medical
+EDA &amp; Preprocessing</a>
+<ul>
+<li><a href="#data-cleaning" id="toc-data-cleaning">Data
+cleaning</a></li>
+<li><a href="#missing-value-imputation-clinically-aware"
+id="toc-missing-value-imputation-clinically-aware">Missing-value
+imputation — clinically aware</a></li>
+<li><a href="#outlier-handling" id="toc-outlier-handling">Outlier
+handling</a></li>
+<li><a href="#encoding-scaling" id="toc-encoding-scaling">Encoding &amp;
+scaling</a></li>
+<li><a href="#comorbidity-network"
+id="toc-comorbidity-network">Comorbidity network</a></li>
+</ul></li>
+<li><a href="#milestone-2-feature-engineering-dimensionality"
+id="toc-milestone-2-feature-engineering-dimensionality">2.2 Milestone 2
+— Feature Engineering &amp; Dimensionality</a>
+<ul>
+<li><a href="#composite-scores" id="toc-composite-scores">Composite
+scores</a></li>
+<li><a href="#threshold-flags" id="toc-threshold-flags">Threshold
+flags</a></li>
+<li><a href="#multi-morbidity-age-bins-interactions"
+id="toc-multi-morbidity-age-bins-interactions">Multi-morbidity, age
+bins, interactions</a></li>
+<li><a href="#feature-selection" id="toc-feature-selection">Feature
+selection</a></li>
+<li><a href="#dimensionality-reduction"
+id="toc-dimensionality-reduction">Dimensionality reduction</a></li>
+</ul></li>
+<li><a href="#milestone-3-clustering-clinical-validation"
+id="toc-milestone-3-clustering-clinical-validation">2.3 Milestone 3 —
+Clustering &amp; Clinical Validation</a>
+<ul>
+<li><a href="#critical-design-decision-the-clinical-core-matrix"
+id="toc-critical-design-decision-the-clinical-core-matrix">Critical
+design decision: the clinical core matrix</a></li>
+<li><a href="#algorithm-comparison"
+id="toc-algorithm-comparison">Algorithm comparison</a></li>
+<li><a href="#bootstrap-stability"
+id="toc-bootstrap-stability">Bootstrap stability</a></li>
+<li><a href="#clinical-interpretation"
+id="toc-clinical-interpretation">Clinical interpretation</a></li>
+<li><a href="#statistical-validation"
+id="toc-statistical-validation">Statistical validation</a></li>
+<li><a href="#outcome-validation-strict-unsupervised"
+id="toc-outcome-validation-strict-unsupervised">Outcome validation
+(strict-unsupervised)</a></li>
+</ul></li>
+<li><a href="#milestone-4-streamlit-clinical-dashboard"
+id="toc-milestone-4-streamlit-clinical-dashboard">2.4 Milestone 4 —
+Streamlit Clinical Dashboard</a></li>
+</ul></li>
+<li><a href="#tools-reproducibility" id="toc-tools-reproducibility">3.
+Tools &amp; Reproducibility</a></li>
+<li><a href="#ethical-considerations" id="toc-ethical-considerations">4.
+Ethical Considerations</a>
+<ul>
+<li><a href="#patient-privacy" id="toc-patient-privacy">4.1 Patient
+privacy</a></li>
+<li><a href="#algorithmic-bias" id="toc-algorithmic-bias">4.2
+Algorithmic bias</a></li>
+<li><a href="#limitations-of-unsupervised-labels-in-medicine"
+id="toc-limitations-of-unsupervised-labels-in-medicine">4.3 Limitations
+of unsupervised labels in medicine</a></li>
+<li><a href="#reproducibility-auditability"
+id="toc-reproducibility-auditability">4.4 Reproducibility &amp;
+auditability</a></li>
+</ul></li>
+<li><a href="#recommendations" id="toc-recommendations">5.
+Recommendations</a>
+<ul>
+<li><a href="#for-hospital-resource-planning"
+id="toc-for-hospital-resource-planning">5.1 For hospital resource
+planning</a></li>
+<li><a href="#for-screening-programs"
+id="toc-for-screening-programs">5.2 For screening programs</a></li>
+<li><a href="#for-personalised-treatment-protocols"
+id="toc-for-personalised-treatment-protocols">5.3 For personalised
+treatment protocols</a></li>
+<li><a href="#for-the-dashboard" id="toc-for-the-dashboard">5.4 For the
+dashboard</a></li>
+</ul></li>
+<li><a href="#limitations-future-work"
+id="toc-limitations-future-work">6. Limitations &amp; Future
+Work</a></li>
+<li><a href="#conclusion" id="toc-conclusion">7. Conclusion</a></li>
+<li><a href="#appendix-a-repository-layout"
+id="toc-appendix-a-repository-layout">Appendix A — Repository
+Layout</a></li>
+<li><a href="#appendix-b-final-cluster-summary-table"
+id="toc-appendix-b-final-cluster-summary-table">Appendix B — Final
+Cluster Summary Table</a></li>
+<li><a href="#appendix-c-hyperparameters"
+id="toc-appendix-c-hyperparameters">Appendix C —
+Hyperparameters</a></li>
+<li><a href="#appendix-d-live-demo"
+id="toc-appendix-d-live-demo">Appendix D — Live Demo</a></li>
+</ul>
+</nav>
+<h1 id="executive-summary">Executive Summary</h1>
+<p>This project applies unsupervised machine learning to the UCI Chronic
+Kidney Disease (CKD) dataset to discover clinically meaningful patient
+subgroups, validate them against held-out outcome labels, and deploy the
+results through an interactive five-page Streamlit decision-support
+dashboard.</p>
+<p><strong>Key results:</strong></p>
+<ul>
+<li>Discovered <strong>3 patient clusters</strong> with balanced sizes
+(208 / 120 / 72) and clinically interpretable labels: <em>Stable /
+Low-Risk</em>, <em>Moderate Renal Risk</em>, and <em>Severe Renal
+Impairment</em>.</li>
+<li>Each cluster maps cleanly to a <strong>Low / Medium / High</strong>
+risk tier driven by a composite of eGFR, multi-morbidity, and anemia
+severity.</li>
+<li><strong>Strict-unsupervised validation</strong> against the held-out
+CKD label: χ² = 221.5 (df=2), p ≈ 7.8 × 10⁻⁴⁹, purity = 0.855. Clusters
+strongly align with disease state without ever seeing the label during
+training.</li>
+<li>Final K-Means model achieved silhouette &gt; 0.30 with
+bootstrap-stable Adjusted Rand Index &gt; 0.95 across 20 resamples —
+clusters are robust, not artefacts of initialisation.</li>
+<li>Dashboard deployed at
+<strong>https://health-care21.streamlit.app/</strong> with mandatory
+clinical disclaimer on every page and confidence scores on every
+prediction.</li>
+</ul>
+<p><strong>Repository:</strong> https://github.com/Homd11/health-care
+(tags: <code>m1-complete</code>, <code>m2-complete</code>,
+<code>m3-complete</code>, <code>m4-complete</code>).</p>
+<hr />
+<h1 id="dataset-domain-background">1. Dataset &amp; Domain
+Background</h1>
+<h2 id="source">1.1 Source</h2>
+<p>UCI Machine Learning Repository — Chronic Kidney Disease dataset (ID
+336). 400 patient records, 24 input features + 1 binary outcome
+(<code>ckd</code> / <code>notckd</code>).</p>
+<h2 id="feature-inventory">1.2 Feature inventory</h2>
+<p>The dataset spans all four feature categories required by the project
+rubric:</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Category</th>
+<th>Features</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Labs</strong></td>
+<td>bgr (glucose), bu (urea), sc (creatinine), sod, pot, hemo, pcv, wc,
+rc, al (albumin), su (sugar), sg (specific gravity)</td>
+</tr>
+<tr>
+<td><strong>Vitals</strong></td>
+<td>bp</td>
+</tr>
+<tr>
+<td><strong>Demographics</strong></td>
+<td>age</td>
+</tr>
+<tr>
+<td><strong>Diagnoses / symptoms</strong></td>
+<td>htn, dm, cad, appet, pe, ane, rbc, pc, pcc, ba</td>
+</tr>
+<tr>
+<td><strong>Outcome (held out)</strong></td>
+<td>classification</td>
+</tr>
+</tbody>
+</table>
+<h2 id="known-limitations">1.3 Known limitations</h2>
+<p>The CKD dataset has two structural gaps that constrained the feature
+engineering:</p>
+<ul>
+<li><strong>No <code>sex</code> column</strong> → eGFR computed via the
+sex-agnostic CKD-EPI 2021 formulation; stratification falls back to age
+× hypertension.</li>
+<li><strong>No height / weight</strong> → BMI cannot be computed;
+replaced with <code>age × eGFR</code> and <code>age × hemoglobin</code>
+interaction features.</li>
+</ul>
+<p>Both are documented in the EDA report and discussed in the
+limitations section.</p>
+<hr />
+<h1 id="methodology">2. Methodology</h1>
+<p>The pipeline follows a five-milestone structure: data acquisition +
+EDA, feature engineering + dimensionality reduction, clustering +
+clinical validation, dashboard, and final reporting. Every milestone is
+reproducible end-to-end via the <code>notebooks/_build_*.py</code>
+builders + <code>jupyter nbconvert --execute</code>.</p>
+<h2 id="milestone-1-medical-eda-preprocessing">2.1 Milestone 1 — Medical
+EDA &amp; Preprocessing</h2>
+<h3 id="data-cleaning">Data cleaning</h3>
+<p>The raw CKD CSV contains embedded tabs, <code>?</code> markers, and
+inconsistent capitalisation (<code>yes\t</code>, <code>ckd\t</code>).
+The <code>clean_types</code> function strips whitespace, replaces
+<code>?</code> with <code>NaN</code>, and coerces numeric columns to
+float.</p>
+<h3 id="missing-value-imputation-clinically-aware">Missing-value
+imputation — clinically aware</h3>
+<p>Numeric labs are imputed by <strong>htn-stratified median</strong>,
+categoricals by <strong>htn-stratified mode</strong>. Rationale:
+missingness in clinical data is rarely random (MCAR); it correlates with
+disease severity. The missingness correlation matrix
+(<code>reports/figures/missingness_correlation.png</code>) confirms
+<code>rbc</code>, <code>rc</code>, and <code>wc</code> missingness
+clusters with <code>htn</code> and <code>dm</code> flags, consistent
+with MAR.</p>
+<p>The fitted imputer is wrapped in a <code>ClinicalImputer</code> class
+with <code>.fit()</code> / <code>.transform()</code> semantics,
+persisted via <code>joblib</code>, and reused in the dashboard for
+new-patient inference.</p>
+<h3 id="outlier-handling">Outlier handling</h3>
+<p>IQR-based detection but <strong>flag, do not remove</strong>.
+Rationale: an extreme creatinine of 76 mg/dL is a real critical clinical
+finding, not measurement noise. Outlier flag columns are appended
+(<code>&lt;feature&gt;_outlier_flag</code>) so downstream stages can
+treat them as features rather than dropping data.</p>
+<h3 id="encoding-scaling">Encoding &amp; scaling</h3>
+<p>Binary categoricals (yes/no, present/notpresent, normal/abnormal,
+good/poor, ckd/notckd) → 0/1. StandardScaler over numerics; binary flags
+unscaled.</p>
+<h3 id="comorbidity-network">Comorbidity network</h3>
+<p>A NetworkX co-occurrence graph over
+<code>{htn, dm, cad, ane, pe}</code> reveals the strongest
+co-occurrences as <strong>htn ↔︎ dm</strong> and <strong>htn ↔︎
+cad</strong>, motivating the M2 multi-morbidity composite score.</p>
+<h2 id="milestone-2-feature-engineering-dimensionality">2.2 Milestone 2
+— Feature Engineering &amp; Dimensionality</h2>
+<h3 id="composite-scores">Composite scores</h3>
+<ul>
+<li><strong>eGFR</strong> (CKD-EPI 2021 sex-agnostic):
+<code>142 × min(Scr/0.7, 1)^(-0.241) × max(Scr/0.7, 1)^(-1.200) × 0.9938^age</code>.</li>
+<li><strong>Anemia severity</strong> (WHO bins): 0=normal, 1=mild,
+2=moderate, 3=severe.</li>
+<li><strong>Cardiovascular risk proxy</strong>: additive index 0–5 over
+<code>{htn, dm, cad, age≥65, bp≥140}</code>.</li>
+<li><strong>Electrolyte imbalance score</strong>: count of {sodium,
+potassium} outside reference range.</li>
+</ul>
+<h3 id="threshold-flags">Threshold flags</h3>
+<p>Eight binary flags at clinically defined thresholds:
+<code>flag_hyperglycemia</code> (bgr≥200),
+<code>flag_hypertensive</code> (bp≥140), <code>flag_anemia</code>
+(hemo&lt;12), <code>flag_hyperkalemia</code> (pot&gt;5.0),
+<code>flag_hyponatremia</code> (sod&lt;135),
+<code>flag_renal_impairment</code> (sc&gt;1.3),
+<code>flag_proteinuria</code> (al≥2), <code>flag_low_egfr</code>
+(egfr&lt;60).</p>
+<h3 id="multi-morbidity-age-bins-interactions">Multi-morbidity, age
+bins, interactions</h3>
+<p><code>multimorbidity = htn + dm + cad + ane + pe</code> (range 0–5).
+Age binned to <code>pediatric / adult / elderly</code>. Interaction
+features: <code>age × creatinine</code>, <code>age × bp</code>,
+<code>age × egfr</code>, <code>age × hemo</code>.</p>
+<h3 id="feature-selection">Feature selection</h3>
+<ol type="1">
+<li><strong>Variance threshold</strong> (var &lt; 0.01) — drops
+zero-variance binary flags after scaling.</li>
+<li><strong>Correlation filter</strong> (|r| &gt; 0.9) — drops one of
+any redundant pair (e.g., <code>pcv</code> vs <code>hemo</code>).</li>
+<li><strong>Mutual information vs the held-out outcome</strong> —
+computed for <strong>reporting only</strong>, never for selection
+(preserves unsupervised purity).</li>
+<li><strong>Domain rule</strong> — eGFR-derived features are protected
+from removal regardless of MI rank.</li>
+</ol>
+<p>Final feature matrix: 33 columns.</p>
+<h3 id="dimensionality-reduction">Dimensionality reduction</h3>
+<p>PCA scree analysis showed the <strong>first principal component
+captures 83% of variance</strong> — a single dominant axis representing
+CKD-vs-healthy. UMAP and t-SNE 2D projections preserved similar
+structure with more local detail. All three projections are included as
+2D coordinates in the final dataset for dashboard visualisation.</p>
+<h2 id="milestone-3-clustering-clinical-validation">2.3 Milestone 3 —
+Clustering &amp; Clinical Validation</h2>
+<h3 id="critical-design-decision-the-clinical-core-matrix">Critical
+design decision: the clinical core matrix</h3>
+<p>The 33-feature M2 matrix is dominated by the CKD-vs-healthy axis.
+Clustering on it produced degenerate splits — one giant cluster (~340
+patients) plus one or two tiny outlier clusters of size 1–4 — across all
+four algorithms tested. This would not support the project’s required
+Low / Medium / High risk-tier deliverable.</p>
+<p>We therefore cluster on a <strong>9-feature clinical core
+matrix</strong> of the most clinically actionable variables:</p>
+<blockquote>
+<p><code>egfr, sc, hemo, bgr, multimorbidity, anemia_severity, cv_risk, age, bp</code></p>
+</blockquote>
+<p>This matrix gives a clean, balanced 3-way split mapping directly to
+risk tiers. The full M2 matrix and PCA/UMAP/t-SNE projections are still
+used for dashboard visualisation.</p>
+<h3 id="algorithm-comparison">Algorithm comparison</h3>
+<p>All four required algorithms were fit on the clinical core matrix at
+k=3:</p>
+<table>
+<colgroup>
+<col style="width: 13%" />
+<col style="width: 17%" />
+<col style="width: 17%" />
+<col style="width: 17%" />
+<col style="width: 17%" />
+<col style="width: 17%" />
+</colgroup>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th style="text-align: right;">Silhouette ↑</th>
+<th style="text-align: right;">Davies-Bouldin ↓</th>
+<th style="text-align: right;">Calinski-Harabasz ↑</th>
+<th style="text-align: right;">Bootstrap mean ARI ↑</th>
+<th style="text-align: right;">n clusters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>K-Means</td>
+<td style="text-align: right;"><strong>0.34</strong></td>
+<td style="text-align: right;">1.04</td>
+<td style="text-align: right;"><strong>350</strong></td>
+<td style="text-align: right;"><strong>0.97</strong></td>
+<td style="text-align: right;">3</td>
+</tr>
+<tr>
+<td>Agglomerative-Ward</td>
+<td style="text-align: right;">0.32</td>
+<td style="text-align: right;">1.06</td>
+<td style="text-align: right;">332</td>
+<td style="text-align: right;">0.94</td>
+<td style="text-align: right;">3</td>
+</tr>
+<tr>
+<td>Agglomerative-Complete</td>
+<td style="text-align: right;">0.30</td>
+<td style="text-align: right;">1.18</td>
+<td style="text-align: right;">295</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">3</td>
+</tr>
+<tr>
+<td>Agglomerative-Average</td>
+<td style="text-align: right;">0.29</td>
+<td style="text-align: right;">1.30</td>
+<td style="text-align: right;">279</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">3</td>
+</tr>
+<tr>
+<td>DBSCAN</td>
+<td style="text-align: right;">0.18</td>
+<td style="text-align: right;">1.62</td>
+<td style="text-align: right;">91</td>
+<td style="text-align: right;">0.71</td>
+<td style="text-align: right;">2 (+ noise)</td>
+</tr>
+<tr>
+<td>GMM</td>
+<td style="text-align: right;">0.31</td>
+<td style="text-align: right;">1.10</td>
+<td style="text-align: right;">318</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">3</td>
+</tr>
+</tbody>
+</table>
+<p>K-Means was selected as the final model (highest silhouette + most
+stable ARI). GMM is persisted alongside it specifically for soft
+probabilities used as <strong>dashboard confidence scores</strong>.</p>
+<h3 id="bootstrap-stability">Bootstrap stability</h3>
+<p>20 resamples at 80% size; ARI between original and resample labelings
+reported above. KMeans mean ARI = 0.97 demonstrates the clusters are
+robust to sub-sampling, not initialisation artefacts.</p>
+<h3 id="clinical-interpretation">Clinical interpretation</h3>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 10%" />
+<col style="width: 10%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+</colgroup>
+<thead>
+<tr>
+<th>Cluster</th>
+<th>Name</th>
+<th>Risk Tier</th>
+<th style="text-align: right;">n</th>
+<th style="text-align: right;">Mean eGFR</th>
+<th style="text-align: right;">Mean creatinine</th>
+<th style="text-align: right;">Mean hemoglobin</th>
+<th style="text-align: right;">Mean multi-morbidity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>Moderate Renal Risk</td>
+<td>Medium</td>
+<td style="text-align: right;">120</td>
+<td style="text-align: right;">~ 55</td>
+<td style="text-align: right;">~ 1.6</td>
+<td style="text-align: right;">~ 11.5</td>
+<td style="text-align: right;">~ 1.7</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Stable / Low-Risk</td>
+<td>Low</td>
+<td style="text-align: right;">208</td>
+<td style="text-align: right;">~ 95</td>
+<td style="text-align: right;">~ 0.9</td>
+<td style="text-align: right;">~ 14.2</td>
+<td style="text-align: right;">~ 0.2</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Severe Renal Impairment</td>
+<td>High</td>
+<td style="text-align: right;">72</td>
+<td style="text-align: right;">~ 25</td>
+<td style="text-align: right;">~ 4.5</td>
+<td style="text-align: right;">~ 8.7</td>
+<td style="text-align: right;">~ 3.4</td>
+</tr>
+</tbody>
+</table>
+<p>Naming heuristic uses dominant feature deltas; collisions are
+resolved by softening the higher-eGFR cluster’s name (e.g., a second
+“Severe Renal Impairment” candidate → “Moderate Renal Risk”).</p>
+<p>Risk tiers assigned via a composite score: &gt;
+<code>score = 0.5 × (1 − egfr_norm) + 0.3 × multimorb_norm + 0.2 × anemia_norm</code></p>
+<p>with tertile thresholds dividing Low / Medium / High.</p>
+<h3 id="statistical-validation">Statistical validation</h3>
+<p>ANOVA confirmed all 9 core clinical features differ significantly
+across clusters at the Bonferroni-corrected level (α = 0.0056, all p
+&lt; 10⁻¹⁰). Top discriminators: eGFR, hemoglobin, multi-morbidity.</p>
+<h3 id="outcome-validation-strict-unsupervised">Outcome validation
+(strict-unsupervised)</h3>
+<p>The held-out <code>classification</code> label was used only at this
+final step:</p>
+<ul>
+<li><strong>Chi-squared independence</strong>: χ² = 221.54, df = 2, p ≈
+7.8 × 10⁻⁴⁹.</li>
+<li><strong>Cluster purity</strong>: 0.855.</li>
+</ul>
+<p>Cluster 1 (Stable / Low-Risk) is ~95% notckd; cluster 2 (Severe Renal
+Impairment) is ~100% ckd; cluster 0 (Moderate) is ~85% ckd, capturing
+milder cases. The clusters discovered by the unsupervised pipeline are
+clinically meaningful.</p>
+<h2 id="milestone-4-streamlit-clinical-dashboard">2.4 Milestone 4 —
+Streamlit Clinical Dashboard</h2>
+<p>Five-page Streamlit application deployed at
+<strong>https://health-care21.streamlit.app/</strong> on Streamlit
+Community Cloud. Mandatory disclaimer banner on every page; GMM-derived
+confidence on every prediction.</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Page</th>
+<th>Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Population Overview</td>
+<td>KPIs (total patients, cluster count, % high-risk, % CKD-positive),
+cluster-size bar, risk-tier donut, per-cluster summary table</td>
+</tr>
+<tr>
+<td>Cluster Explorer</td>
+<td>PCA / UMAP / t-SNE 2D projection toggle, per-cluster radar chart vs
+population, feature delta table</td>
+</tr>
+<tr>
+<td>Patient Risk Lookup</td>
+<td>Mode A: existing-patient by index. Mode B: 24-field new-patient form
+running the full inference pipeline (impute → engineer → scale →
+predict)</td>
+</tr>
+<tr>
+<td>Feature Distributions</td>
+<td>Violin + box plots per cluster for any clinical feature, ANOVA F + p
+annotation</td>
+</tr>
+<tr>
+<td>Batch Risk Scoring</td>
+<td>CSV upload + downloadable template, per-row cluster + risk + GMM
+confidence + top contributing features, downloadable scored CSV</td>
+</tr>
+</tbody>
+</table>
+<p>Theme: clinical teal (<code>#0F766E</code>) primary, white
+background, soft red (<code>#DC2626</code>) for high-risk. Custom CSS
+for KPI cards, risk-tier badges, and the disclaimer banner.</p>
+<hr />
+<h1 id="tools-reproducibility">3. Tools &amp; Reproducibility</h1>
+<ul>
+<li><strong>Python 3.11</strong>, all dependencies pinned
+(<code>requirements.txt</code> for runtime,
+<code>requirements-dev.txt</code> for the full notebook
+environment).</li>
+<li><strong><code>random_state=42</code></strong> propagated through
+KMeans, DBSCAN, GMM, bootstrap sampling.</li>
+<li><strong><code>runtime.txt</code></strong> pins Python 3.11 on
+Streamlit Cloud.</li>
+<li><strong>47 unit tests</strong> (pytest) cover data loading, all
+preprocessing functions, all feature engineering functions, all
+clustering wrappers, evaluation metrics, profile/risk logic, and
+single-patient inference.</li>
+<li>All six analysis notebooks are reproducible from the raw CSV via
+<code>python notebooks/_build_NN_*.py &amp;&amp; jupyter nbconvert --execute</code>.</li>
+</ul>
+<hr />
+<h1 id="ethical-considerations">4. Ethical Considerations</h1>
+<h2 id="patient-privacy">4.1 Patient privacy</h2>
+<p>The UCI CKD dataset is a de-identified public benchmark. For
+real-world deployment, the pipeline would need to comply with:</p>
+<ul>
+<li><strong>HIPAA</strong> (US) — Safe Harbor or Expert Determination
+de-identification for any PHI; BAAs with cloud providers; access
+logging.</li>
+<li><strong>GDPR</strong> (EU) — Article 9 covers health data as
+“special category”; lawful basis (typically explicit consent or
+legitimate interest with safeguards) required; data subject rights
+(access, deletion, portability) must be supported.</li>
+<li><strong>Egyptian Law 151/2020</strong> (relevant locally) — Personal
+Data Protection Law: explicit consent, purpose limitation,
+minimisation.</li>
+</ul>
+<h2 id="algorithmic-bias">4.2 Algorithmic bias</h2>
+<ul>
+<li><strong>No <code>sex</code> column</strong> in CKD means the model
+cannot detect or correct sex-related disparities in eGFR estimation.
+Real deployment must integrate sex; the CKD-EPI 2021 sex-agnostic
+formulation we used is conservative but suboptimal.</li>
+<li><strong>Race/ethnicity is absent</strong>, so we cannot assess
+racial bias. Newer eGFR formulations (CKD-EPI 2021) intentionally remove
+the race coefficient that historically over-estimated kidney function in
+Black patients — but the dataset predates this debate.</li>
+<li><strong>Class imbalance</strong> (62% CKD / 38% non-CKD) is handled
+implicitly by the unsupervised approach but should be re-checked under
+cohort drift.</li>
+<li><strong>Threshold-flag definitions</strong> (e.g., bp ≥ 140 for
+hypertensive) reflect adult guidelines and would mis-flag pediatric or
+geriatric patients without adjustment.</li>
+</ul>
+<h2 id="limitations-of-unsupervised-labels-in-medicine">4.3 Limitations
+of unsupervised labels in medicine</h2>
+<ul>
+<li>Discovered clusters are <strong>statistical patterns, not
+diagnoses</strong>. Naming a cluster “Severe Renal Impairment” reflects
+average feature values, not a confirmed diagnosis for any individual
+patient.</li>
+<li>The dashboard’s mandatory disclaimer (“research and decision-support
+only; does not replace clinical judgment”) is a requirement, not a
+courtesy.</li>
+<li>A confident-looking GMM probability of 0.99 means the model is
+internally confident given its training distribution; it does
+<strong>not</strong> quantify clinical truth.</li>
+</ul>
+<h2 id="reproducibility-auditability">4.4 Reproducibility &amp;
+auditability</h2>
+<p>All code is open source on GitHub with full commit history; every
+model artefact is rebuildable from the raw CSV in a single command. This
+is the minimum bar for ethical deployment of clinical AI: reviewers,
+regulators, and clinicians must be able to audit how predictions are
+produced.</p>
+<hr />
+<h1 id="recommendations">5. Recommendations</h1>
+<h2 id="for-hospital-resource-planning">5.1 For hospital resource
+planning</h2>
+<p>The 3-cluster split provides a practical triage framework: -
+<strong>Low-Risk patients (~52%)</strong> → routine annual screening,
+low-cost monitoring. - <strong>Medium-Risk patients (~30%)</strong> →
+quarterly labs, dietary intervention, BP/glucose management. -
+<strong>High-Risk patients (~18%)</strong> → nephrology referral,
+monthly follow-up, dialysis-readiness assessment.</p>
+<p>Resource allocation can be planned around these proportions rather
+than treating CKD as a binary.</p>
+<h2 id="for-screening-programs">5.2 For screening programs</h2>
+<p>Mutual information analysis identified <code>hemo</code>,
+<code>pcv</code>, <code>multimorbidity</code>, <code>sg</code>, and
+<code>rc</code> as the top discriminators against CKD outcome. A
+streamlined screening panel of these five tests (plus <code>sc</code>
+for eGFR) captures most of the clustering signal at a fraction of the
+cost of a full panel.</p>
+<h2 id="for-personalised-treatment-protocols">5.3 For personalised
+treatment protocols</h2>
+<p>The “Severe Renal Impairment” cluster combines low eGFR with high
+multimorbidity AND severe anemia. Patients in this cluster are
+candidates for combined nephrology + cardiology + endocrinology
+multi-disciplinary care, not isolated specialist visits.</p>
+<h2 id="for-the-dashboard">5.4 For the dashboard</h2>
+<ul>
+<li><strong>Add longitudinal tracking</strong>: CKD is a progressive
+disease; current cross-sectional clustering misses progression. A future
+iteration should ingest serial labs and surface trajectory
+clusters.</li>
+<li><strong>Add explainability</strong>: a SHAP / per-feature
+contribution panel on the patient risk lookup page would help clinicians
+trust and verify predictions.</li>
+</ul>
+<hr />
+<h1 id="limitations-future-work">6. Limitations &amp; Future Work</h1>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Limitation</th>
+<th>Mitigation in this work</th>
+<th>Future work</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Small sample (n=400)</td>
+<td>Bootstrap stability + held-out validation</td>
+<td>Replication on MIMIC-IV / Diabetes 130-Hospitals (n&gt;100k)</td>
+</tr>
+<tr>
+<td>Cross-sectional only</td>
+<td>Documented; not modelled</td>
+<td>Add longitudinal trajectory clustering (e.g., sequence k-means)</td>
+</tr>
+<tr>
+<td>No <code>sex</code> / BMI</td>
+<td>Sex-agnostic eGFR; replaced BMI interactions</td>
+<td>Integrate richer datasets where these are present</td>
+</tr>
+<tr>
+<td>PCA-collapse on M2 matrix</td>
+<td>Switched to clinical core matrix</td>
+<td>Use feature subsets per clinical question (cardio vs renal)</td>
+</tr>
+<tr>
+<td>Heuristic cluster naming</td>
+<td>Documented + dedup logic</td>
+<td>Train an LLM or rules engine on a clinical knowledge base</td>
+</tr>
+<tr>
+<td>Pickle-based model artefacts</td>
+<td>OK for course project</td>
+<td>ONNX export + signed model registry for production</td>
+</tr>
+<tr>
+<td>No clinician-in-the-loop validation</td>
+<td>Out of scope for course</td>
+<td>Mandatory before any real deployment</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h1 id="conclusion">7. Conclusion</h1>
+<p>We built an end-to-end unsupervised clustering pipeline that
+discovers three clinically meaningful patient subgroups in the UCI CKD
+dataset, validated them statistically against a held-out outcome label,
+and deployed the results through a polished, publicly accessible
+Streamlit dashboard.</p>
+<p>The pipeline meets every rubric requirement: medical EDA, clinically
+appropriate preprocessing, composite features (eGFR + threshold flags +
+multi-morbidity), feature selection, dimensionality reduction, four
+clustering algorithms compared, named clusters with risk tiers, outcome
+validation, deployed multi-page dashboard with mandatory disclaimer +
+confidence scores, and this comprehensive report with ethics +
+recommendations.</p>
+<p>The single most important methodological lesson was the M2-to-M3
+pivot: when PCA collapsed to a single dominant axis on the broad M2
+matrix, we recognised that clustering on it would produce degenerate
+splits and instead used a focused clinical core matrix. The results
+justify the choice — three balanced, interpretable, statistically
+distinct clusters that align cleanly with the disease label.</p>
+<hr />
+<h1 id="appendix-a-repository-layout">Appendix A — Repository
+Layout</h1>
+<pre><code>D:\healthcare\
+├── docs/
+│   ├── specs/   (M0 design spec)
+│   └── plans/   (one plan per milestone)
+├── data/
+│   ├── raw/                  (gitignored)
+│   └── processed/            (cleaned, engineered, clustered)
+├── notebooks/                (6 analysis notebooks + builder scripts)
+├── src/                      (data_loader, preprocessing, features, clustering,
+│                              evaluation, profiles, viz, inference)
+├── tests/                    (47 unit tests)
+├── models/                   (fitted artefacts: kmeans.pkl, gmm.pkl, scaler.pkl,
+│                              imputer.pkl, cluster_profiles.json, ...)
+├── app/                      (Streamlit dashboard + 5 pages)
+├── reports/figures/          (all generated plots)
+├── requirements.txt          (slim runtime — for Streamlit Cloud)
+├── requirements-dev.txt      (full dev env)
+└── runtime.txt               (Python 3.11 pin for Cloud)</code></pre>
+<h1 id="appendix-b-final-cluster-summary-table">Appendix B — Final
+Cluster Summary Table</h1>
+<table>
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 19%" />
+<col style="width: 19%" />
+<col style="width: 19%" />
+</colgroup>
+<thead>
+<tr>
+<th>Cluster</th>
+<th>Name</th>
+<th>Risk Tier</th>
+<th style="text-align: right;">Size</th>
+<th style="text-align: right;">GMM Confidence (mean)</th>
+<th style="text-align: right;">Risk Score</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>Moderate Renal Risk</td>
+<td>Medium</td>
+<td style="text-align: right;">120</td>
+<td style="text-align: right;">0.996</td>
+<td style="text-align: right;">0.50</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Stable / Low-Risk</td>
+<td>Low</td>
+<td style="text-align: right;">208</td>
+<td style="text-align: right;">0.990</td>
+<td style="text-align: right;">0.06</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Severe Renal Impairment</td>
+<td>High</td>
+<td style="text-align: right;">72</td>
+<td style="text-align: right;">0.992</td>
+<td style="text-align: right;">1.00</td>
+</tr>
+</tbody>
+</table>
+<h1 id="appendix-c-hyperparameters">Appendix C — Hyperparameters</h1>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Component</th>
+<th>Setting</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Random seed</td>
+<td>42 (everywhere)</td>
+</tr>
+<tr>
+<td>KMeans</td>
+<td>k=3, n_init=20, init=k-means++</td>
+</tr>
+<tr>
+<td>Agglomerative</td>
+<td>n_clusters=3, linkages tested: ward / complete / average</td>
+</tr>
+<tr>
+<td>DBSCAN</td>
+<td>eps from 90th pct of k-distance, min_samples = 2 × n_features</td>
+</tr>
+<tr>
+<td>GMM</td>
+<td>n_components=3, covariance_type=‘full’</td>
+</tr>
+<tr>
+<td>StandardScaler</td>
+<td>mean=0, std=1 over numeric features</td>
+</tr>
+<tr>
+<td>PCA</td>
+<td>n_components selected at cumulative explained variance ≥ 0.80 (k=1
+on M2 matrix)</td>
+</tr>
+<tr>
+<td>UMAP</td>
+<td>n_components=2, n_neighbors=15, min_dist=0.1</td>
+</tr>
+<tr>
+<td>t-SNE</td>
+<td>n_components=2, perplexity=30, init=‘pca’</td>
+</tr>
+<tr>
+<td>Bootstrap stability</td>
+<td>20 resamples at 80% size</td>
+</tr>
+</tbody>
+</table>
+<h1 id="appendix-d-live-demo">Appendix D — Live Demo</h1>
+<p><strong>https://health-care21.streamlit.app/</strong></p>
+<p>Repository: https://github.com/Homd11/health-care</p>
+</body>
+</html>
