@@ -48,3 +48,42 @@ def threshold_flags(df: pd.DataFrame) -> pd.DataFrame:
             continue
         out[flag] = ops[op](out[col], thr).astype(int)
     return out
+
+
+MORBIDITY_COLS = ("htn", "dm", "cad", "ane", "pe")
+
+
+def multimorbidity_score(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    cols = [c for c in MORBIDITY_COLS if c in out.columns]
+    out["multimorbidity"] = out[cols].sum(axis=1).astype(int)
+    return out
+
+
+def _age_bin(a: float) -> str:
+    if pd.isna(a):
+        return "unknown"
+    if a < 18:
+        return "pediatric"
+    if a < 65:
+        return "adult"
+    return "elderly"
+
+
+def age_group_features(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    out["age_group"] = out["age"].apply(_age_bin)
+    for grp in ("pediatric", "adult", "elderly"):
+        out[f"age_{grp}"] = (out["age_group"] == grp).astype(int)
+    return out
+
+
+def interaction_features(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    out["age_x_creatinine"] = out["age"] * out["sc"]
+    out["age_x_bp"] = out["age"] * out["bp"]
+    if "egfr" in out.columns:
+        out["age_x_egfr"] = out["age"] * out["egfr"]
+    if "hemo" in out.columns:
+        out["age_x_hemo"] = out["age"] * out["hemo"]
+    return out

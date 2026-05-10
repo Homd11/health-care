@@ -71,3 +71,43 @@ def test_threshold_flags_skips_missing_columns():
     assert "flag_hyperglycemia" in out.columns
     assert "flag_hypertensive" in out.columns
     assert "flag_anemia" not in out.columns
+
+
+from src.features import multimorbidity_score, age_group_features, interaction_features
+
+
+def test_multimorbidity_score():
+    df = pd.DataFrame({
+        "htn": [1, 1, 0],
+        "dm":  [1, 0, 0],
+        "cad": [0, 1, 0],
+        "ane": [1, 0, 0],
+        "pe":  [0, 0, 0],
+    })
+    out = multimorbidity_score(df)
+    assert out["multimorbidity"].tolist() == [3, 2, 0]
+
+
+def test_age_group_features_categorical_and_dummies():
+    df = pd.DataFrame({"age_raw": [10, 30, 70]})
+    df["age"] = df["age_raw"]
+    out = age_group_features(df)
+    assert out["age_group"].tolist() == ["pediatric", "adult", "elderly"]
+    assert out["age_pediatric"].tolist() == [1, 0, 0]
+    assert out["age_adult"].tolist()     == [0, 1, 0]
+    assert out["age_elderly"].tolist()   == [0, 0, 1]
+
+
+def test_interaction_features_multiplies_correctly():
+    df = pd.DataFrame({
+        "age": [40, 60],
+        "sc":  [1.0, 2.0],
+        "bp":  [120, 140],
+        "egfr": [90, 50],
+        "hemo": [14, 10],
+    })
+    out = interaction_features(df)
+    assert out["age_x_creatinine"].tolist() == [40.0, 120.0]
+    assert out["age_x_bp"].tolist() == [4800, 8400]
+    assert out["age_x_egfr"].tolist() == [3600, 3000]
+    assert out["age_x_hemo"].tolist() == [560, 600]
