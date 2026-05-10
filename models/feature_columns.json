@@ -1,0 +1,60 @@
+{
+  "feature_columns": [
+    "age",
+    "bp",
+    "sg",
+    "al",
+    "su",
+    "rbc",
+    "pc",
+    "pcc",
+    "ba",
+    "bgr",
+    "bu",
+    "sc",
+    "sod",
+    "pot",
+    "hemo",
+    "pcv",
+    "wc",
+    "rc",
+    "htn",
+    "dm",
+    "cad",
+    "appet",
+    "pe",
+    "ane",
+    "egfr",
+    "flag_proteinuria",
+    "flag_low_egfr",
+    "multimorbidity",
+    "age_x_creatinine",
+    "age_x_bp",
+    "age_x_egfr",
+    "age_x_hemo",
+    "flag_renal_impairment"
+  ],
+  "pca_n_components": 1,
+  "pca_explained_variance_ratio": [
+    0.8331315033288361
+  ],
+  "dropped_low_variance": [
+    "anemia_severity",
+    "electrolyte_imbalance",
+    "flag_hyperglycemia",
+    "flag_hypertensive",
+    "flag_anemia",
+    "flag_hyperkalemia",
+    "flag_hyponatremia",
+    "age_pediatric",
+    "age_adult",
+    "age_elderly"
+  ],
+  "dropped_high_correlation": [
+    "flag_renal_impairment",
+    "cv_risk"
+  ],
+  "protected_restored": [
+    "flag_renal_impairment"
+  ]
+}
