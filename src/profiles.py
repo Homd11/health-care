@@ -29,12 +29,33 @@ def compute_cluster_profiles(
 
 
 def name_clusters(profiles: dict[int, dict]) -> dict[int, dict]:
-    """Heuristic naming based on dominant deltas (egfr, glucose, multimorbidity)."""
+    """Heuristic naming based on dominant deltas (egfr, glucose, multimorbidity).
+
+    If two clusters get the same heuristic name, differentiate them by eGFR severity:
+    the lower-eGFR cluster keeps the original name; the higher-eGFR cluster gets
+    its name softened to one severity tier lower (e.g., Severe → Moderate).
+    """
+    SOFTEN = {
+        "Severe Renal Impairment": "Moderate Renal Risk",
+        "Moderate Renal Risk": "Mild Renal Risk",
+        "Anemic Subgroup": "Mild Anemia Subgroup",
+        "Metabolic / Diabetic Risk": "Mild Metabolic Risk",
+    }
     out = {}
     for cid, p in profiles.items():
-        means = p["feature_means"]
-        name = _pick_name(means)
-        out[cid] = {**p, "name": name}
+        out[cid] = {**p, "name": _pick_name(p["feature_means"])}
+
+    # Dedupe collisions by softening the higher-eGFR (less severe) cluster's name
+    name_to_cids: dict[str, list[int]] = {}
+    for cid, p in out.items():
+        name_to_cids.setdefault(p["name"], []).append(cid)
+    for name, cids in name_to_cids.items():
+        if len(cids) <= 1 or name not in SOFTEN:
+            continue
+        # Sort by eGFR ascending; the cluster(s) with higher eGFR get softened names
+        cids_sorted = sorted(cids, key=lambda c: out[c]["feature_means"].get("egfr", 90.0))
+        for cid in cids_sorted[1:]:
+            out[cid]["name"] = SOFTEN[name]
     return out
 
 
