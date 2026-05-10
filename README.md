@@ -10,7 +10,8 @@ cd D:\healthcare
 py -3.11 -m venv .venv     # or `python -m venv .venv` if `python` is on PATH
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-pip install -r requirements.txt
+pip install -r requirements-dev.txt   # full dev env (notebooks + EDA)
+# or `pip install -r requirements.txt` for the slim dashboard-only env
 ```
 
 ## Run
