@@ -34,10 +34,18 @@ def _to_clinical_frame(row: dict) -> pd.DataFrame:
     df = clean_types(df)
     imputer, *_ = _load_artifacts()
     df = imputer.transform(df)
-    # encode binaries
+    # Encode binaries. Don't gate on dtype: on Streamlit Cloud (Python 3.14 +
+    # pyarrow-backed pandas) string columns come in as `string[pyarrow]` rather
+    # than `object`. We map any string values via the encoding table and leave
+    # already-numeric values alone, then coerce to Int64.
     for col, mapping in BINARY_ENCODING.items():
-        if col in df.columns and df[col].dtype == object:
-            df[col] = df[col].map(mapping).astype("Int64")
+        if col not in df.columns:
+            continue
+        col_data = df[col]
+        if pd.api.types.is_numeric_dtype(col_data):
+            df[col] = col_data.astype("Int64")
+        else:
+            df[col] = col_data.map(mapping).astype("Int64")
     df = compute_egfr(df)
     df = multimorbidity_score(df)
     df = compute_anemia_severity(df)
